@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoBurhan — Link Yönetim Paneli</title>
+  <meta name="description" content="GoBurhan link kısaltma ve yönetim paneli">
+  <!-- Tailwind CSS (forms plugin KALDIRILDI - input'ları bozuyor) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: #0b0f1a;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 10% 0%, rgba(16,185,129,0.1) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 90% 100%, rgba(59,130,246,0.08) 0%, transparent 55%);
+      min-height: 100dvh;
+      color: #e2e8f0;
+    }
+
+    [v-cloak] { display: none !important; }
+
+    /* ===== LAYOUT ===== */
+    .app-wrapper {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100dvh;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      flex: 1;
+    }
+
+    @media (min-width: 1024px) {
+      .app-wrapper { padding: 20px 24px; gap: 18px; }
+      .content-grid { grid-template-columns: 1fr 400px; }
+    }
+
+    .left-col, .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    @media (min-width: 1024px) {
+      .left-col, .right-col { gap: 18px; }
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+    }
+    .card-bright {
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 18px;
+    }
+
+    /* ===== INPUTS - forced dark, override everything ===== */
+    input[type="text"],
+    input[type="url"],
+    input[type="password"],
+    input[type="email"],
+    .dark-input {
+      appearance: none !important;
+      -webkit-appearance: none !important;
+      background-color: rgba(255,255,255,0.06) !important;
+      background: rgba(255,255,255,0.06) !important;
+      border: 1px solid rgba(255,255,255,0.13) !important;
+      border-radius: 11px !important;
+      color: #e2e8f0 !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 14px !important;
+      padding: 11px 15px !important;
+      width: 100% !important;
+      outline: none !important;
+      box-shadow: none !important;
+      transition: border-color .2s, box-shadow .2s !important;
+      display: block;
+    }
+    input[type="text"]::placeholder,
+    input[type="url"]::placeholder,
+    input[type="password"]::placeholder {
+      color: rgba(100,116,139,0.8) !important;
+    }
+    input[type="text"]:focus,
+    input[type="url"]:focus,
+    input[type="password"]:focus {
+      border-color: rgba(16,185,129,0.55) !important;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.1) !important;
+    }
+    /* Kill autofill white bg in Chrome */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus {
+      -webkit-text-fill-color: #e2e8f0 !important;
+      -webkit-box-shadow: 0 0 0 1000px #1a2033 inset !important;
+      box-shadow: 0 0 0 1000px #1a2033 inset !important;
+      caret-color: #e2e8f0;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-green {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 11px;
+      padding: 11px 22px;
+      font-weight: 700;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all .18s;
+      box-shadow: 0 4px 18px rgba(16,185,129,0.28);
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn-green:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(16,185,129,0.38); }
+    .btn-green:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #94a3b8;
+      border-radius: 10px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all .15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-outline:hover { background: rgba(255,255,255,0.07); color: #e2e8f0; border-color: rgba(255,255,255,0.18); }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+    .logo-icon {
+      width: 38px; height: 38px; flex-shrink: 0;
+      background: linear-gradient(135deg,#10b981,#059669);
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(16,185,129,0.28);
+    }
+
+    /* ===== SECTION HEADERS ===== */
+    .section-icon {
+      width: 34px; height: 34px; flex-shrink: 0;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ===== LABEL ===== */
+    .field-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    /* ===== SHORTENER FORM ===== */
+    .shortener-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 640px) {
+      .shortener-grid { grid-template-columns: 1fr 180px; }
+    }
+    @media (min-width: 900px) {
+      .shortener-grid { grid-template-columns: 1fr 200px auto; align-items: end; }
+    }
+
+    /* ===== TABLE ===== */
+    .link-table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+    .link-table thead th {
+      padding: 8px 14px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: .07em; text-transform: uppercase;
+      color: #334155; border-bottom: 1px solid rgba(255,255,255,0.06);
+      text-align: left; white-space: nowrap;
+    }
+    .link-table tbody tr { background: rgba(255,255,255,0.03); transition: background .14s; }
+    .link-table tbody tr:hover { background: rgba(16,185,129,0.07); }
+    .link-table tbody td {
+      padding: 11px 14px; font-size: 13px; vertical-align: middle;
+      border-top: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: #cbd5e1;
+    }
+    .link-table tbody td:first-child { border-left: 1px solid rgba(255,255,255,0.04); border-radius: 10px 0 0 10px; }
+    .link-table tbody td:last-child  { border-right: 1px solid rgba(255,255,255,0.04); border-radius: 0 10px 10px 0; }
+
+    /* Hide columns on small screens */
+    .col-hide-sm { display: none; }
+    @media (min-width: 640px) { .col-hide-sm { display: table-cell; } }
+    .col-hide-md { display: none; }
+    @media (min-width: 900px) { .col-hide-md { display: table-cell; } }
+
+    /* ===== BADGES ===== */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-green { background: rgba(16,185,129,0.12); color: #10b981; }
+    .badge-gray  { background: rgba(100,116,139,0.12); color: #64748b; }
+
+    /* ===== ICON BUTTONS ===== */
+    .ibtn {
+      width: 30px; height: 30px; border-radius: 8px;
+      border: none; cursor: pointer;
+      background: transparent; color: #475569;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: all .14s; flex-shrink: 0;
+    }
+    .ibtn:hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
+    .ibtn.del:hover { background: rgba(239,68,68,0.1); color: #f87171; }
+
+    /* ===== METRIC CARDS ===== */
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 13px; padding: 16px;
+    }
+
+    /* ===== CHART ===== */
+    .chart-wrap { flex: 1; position: relative; min-height: 140px; }
+    .chart-tip {
+      position: absolute;
+      background: #1e293b; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 8px 12px;
+      font-size: 11px; color: #e2e8f0; pointer-events: none;
+      white-space: nowrap; transform: translateX(-50%); z-index: 10;
+    }
+
+    /* ===== AUTH MODAL ===== */
+    .auth-bg {
+      position: fixed; inset: 0;
+      background: rgba(11,15,26,0.88);
+      backdrop-filter: blur(10px);
+      z-index: 50; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .auth-box {
+      background: #111827;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 22px; padding: 36px 32px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+
+    /* ===== TOASTS ===== */
+    .toast-list {
+      position: fixed; top: 18px; right: 18px; z-index: 200;
+      display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none; max-width: calc(100vw - 36px);
+    }
+    .toast-item {
+      pointer-events: auto;
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px; border-radius: 12px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+      max-width: 320px;
+    }
+    .toast-success { background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.22); color: #34d399; }
+    .toast-error   { background: rgba(239,68,68,0.14);  border: 1px solid rgba(239,68,68,0.22);  color: #f87171; }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.18); border-radius: 999px; }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes pulse-ring { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+    .toast-enter-active, .toast-leave-active { transition: all .28s ease; }
+    .toast-enter-from { opacity: 0; transform: translateX(18px); }
+    .toast-leave-to   { opacity: 0; transform: translateX(18px); }
+  </style>
+</head>
+<body>
+<div id="app" v-cloak>
+
+  <!-- ===================== AUTH MODAL ===================== -->
+  <div v-if="showTokenModal" class="auth-bg">
+    <div class="auth-box">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:13px;margin-bottom:28px">
+        <div class="logo-icon">
+          <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div style="font-size:19px;font-weight:800;color:#f1f5f9;letter-spacing:-.3px">GoBurhan</div>
+          <div style="font-size:12px;color:#475569;margin-top:2px">{{ registerOpen ? 'Yönetici hesabı oluştur' : 'Yönetim paneline giriş yap' }}</div>
+        </div>
+      </div>
+      <!-- Form -->
+      <form @submit.prevent="handleAuth" autocomplete="off">
+        <div style="margin-bottom:14px">
+          <label class="field-label">Kullanıcı Adı</label>
+          <input type="text" v-model="authForm.username" required placeholder="yoneticiad" autocomplete="username">
+        </div>
+        <div style="margin-bottom:14px">
+          <label class="field-label">Şifre</label>
+          <input type="password" v-model="authForm.password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div v-if="registerOpen" style="margin-bottom:14px">
+          <label class="field-label">Şifre Tekrar</label>
+          <input type="password" v-model="authForm.passwordConfirm" required placeholder="••••••••" autocomplete="new-password">
+        </div>
+        <button type="submit" class="btn-green" :disabled="authSubmitting" style="width:100%;justify-content:center;padding:13px;font-size:15px;margin-top:6px">
+          <svg v-if="authSubmitting" class="spin" width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.3)" stroke-width="4"/><path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity=".8"/></svg>
+          {{ authSubmitting ? (registerOpen ? 'Kayıt yapılıyor...' : 'Giriş yapılıyor...') : (registerOpen ? 'Kayıt Ol & Giriş Yap' : 'Giriş Yap') }}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MAIN APP ===================== -->
+  <div class="app-wrapper">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo-icon">
+          <svg width="20" height="20" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 style="font-size:17px;font-weight:800;color:#f1f5f9;letter-spacing:-.3px;line-height:1.1">GoBurhan</h1>
+          <p style="font-size:11px;color:#475569;margin-top:2px">go.burhansahin.com.tr</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <!-- Status pill -->
+        <div style="display:flex;align-items:center;gap:7px;padding:5px 13px;background:rgba(16,185,129,0.09);border:1px solid rgba(16,185,129,0.16);border-radius:999px">
+          <span class="pulse-ring" style="width:7px;height:7px;background:#10b981;border-radius:50%;display:block;flex-shrink:0"></span>
+          <span style="font-size:11px;color:#10b981;font-weight:600;white-space:nowrap">Sistem Aktif</span>
+        </div>
+        <!-- Links count -->
+        <div style="font-size:12px;color:#475569;white-space:nowrap"><span style="color:#94a3b8;font-weight:600">{{ links.length }}</span> link</div>
+        <!-- Logout -->
+        <button class="btn-outline" @click="logout">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Çıkış
+        </button>
+        <!-- Avatar -->
+        <div style="width:34px;height:34px;background:linear-gradient(135deg,#0ea5e9,#3b82f6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:white;flex-shrink:0">B</div>
+      </div>
+    </header>
+
+    <!-- CONTENT GRID -->
+    <div class="content-grid">
+
+      <!-- ===== LEFT COLUMN ===== -->
+      <div class="left-col">
+
+        <!-- QUICK SHORTENER -->
+        <div class="card-bright" style="padding:22px 24px">
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:18px">
+            <div class="section-icon" style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.2)">
+              <svg width="16" height="16" fill="none" stroke="#10b981" stroke-width="2.2" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 style="font-size:15px;font-weight:700;color:#f1f5f9">Hızlı Link Kısaltma</h2>
+              <p style="font-size:11px;color:#475569;margin-top:2px">URL'nizi yapıştırın, anında kısaltın</p>
+            </div>
+          </div>
+
+          <form @submit.prevent="createLink">
+            <div class="shortener-grid">
+              <!-- URL -->
+              <div>
+                <label class="field-label">Hedef URL</label>
+                <input type="url" v-model="linkForm.originalUrl" required placeholder="https://ornek.com/cok-uzun-bir-adres-buraya">
+              </div>
+              <!-- Short code -->
+              <div>
+                <label class="field-label">Kısa Kod <span style="color:#334155;font-weight:400;text-transform:none">(isteğe bağlı)</span></label>
+                <input type="text" v-model="linkForm.shortCode" placeholder="ozel-kod">
+              </div>
+              <!-- Submit -->
+              <div style="display:flex;align-items:flex-end">
+                <button type="submit" class="btn-green" :disabled="submitting" style="width:100%;justify-content:center">
+                  <svg v-if="submitting" class="spin" width="14" height="14" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.3)" stroke-width="4"/><path fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  <svg v-else width="14" height="14" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  {{ submitting ? 'Kısaltılıyor...' : 'Kısalt' }}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- LINK TABLE -->
+        <div class="card" style="padding:20px 22px;flex:1;display:flex;flex-direction:column;min-height:280px">
+          <!-- Header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-shrink:0;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="section-icon" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.18)">
+                <svg width="15" height="15" fill="none" stroke="#3b82f6" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h2 style="font-size:14px;font-weight:700;color:#f1f5f9">Link Yönetim Merkezi</h2>
+                <p style="font-size:11px;color:#475569;margin-top:1px">{{ links.length }} kayıt</p>
+              </div>
+            </div>
+            <button class="btn-outline" @click="fetchLinks()">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Yenile
+            </button>
+          </div>
+
+          <!-- Table area -->
+          <div style="flex:1;overflow:auto;min-height:0">
+            <table class="link-table">
+              <thead>
+                <tr>
+                  <th>Kısa Link</th>
+                  <th class="col-hide-sm">Hedef URL</th>
+                  <th>Tıklanma</th>
+                  <th class="col-hide-md">Oluşturulma</th>
+                  <th>Durum</th>
+                  <th style="text-align:right">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loadingLinks">
+                  <td colspan="6" style="text-align:center;padding:36px;color:#475569">
+                    <svg class="spin" width="20" height="20" fill="none" viewBox="0 0 24 24" style="display:inline-block"><circle cx="12" cy="12" r="10" stroke="rgba(71,85,105,.4)" stroke-width="4"/><path fill="#475569" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  </td>
+                </tr>
+                <tr v-else-if="links.length === 0">
+                  <td colspan="6" style="text-align:center;padding:44px 20px">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+                      <div style="width:48px;height:48px;background:rgba(255,255,255,0.04);border-radius:12px;display:flex;align-items:center;justify-content:center">
+                        <svg width="22" height="22" fill="none" stroke="#334155" stroke-width="1.8" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </div>
+                      <p style="color:#475569;font-size:13px">Henüz link yok. Yukarıdan kısaltın.</p>
+                    </div>
+                  </td>
+                </tr>
+                <tr v-else v-for="link in links" :key="link.id">
+                  <td>
+                    <a :href="getShortUrl(link.shortCode)" target="_blank" style="color:#10b981;font-weight:600;font-size:12px;text-decoration:none">
+                      {{ getShortUrlDisplay(link.shortCode) }}
+                    </a>
+                  </td>
+                  <td class="col-hide-sm">
+                    <span style="display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b;font-size:12px" :title="link.originalUrl">
+                      {{ link.originalUrl }}
+                    </span>
+                  </td>
+                  <td style="font-weight:700;color:#e2e8f0;font-size:14px">{{ link.clickCount.toLocaleString('tr-TR') }}</td>
+                  <td class="col-hide-md" style="color:#475569;font-size:12px">{{ formatDate(link.createdAt) }}</td>
+                  <td>
+                    <span :class="link.isActive ? 'badge badge-green' : 'badge badge-gray'">
+                      <span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0"></span>
+                      {{ link.isActive ? 'Aktif' : 'Pasif' }}
+                    </span>
+                  </td>
+                  <td style="text-align:right">
+                    <div style="display:inline-flex;gap:2px;align-items:center">
+                      <button class="ibtn" @click="copyText(getShortUrl(link.shortCode))" title="Kopyala">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                      <button class="ibtn del" @click="deleteLink(link.id)" title="Sil">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Footer row -->
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+            <span style="font-size:11px;color:#334155">{{ links.length }} link listeleniyor</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- ===== /LEFT COLUMN ===== -->
+
+      <!-- ===== RIGHT COLUMN ===== -->
+      <div class="right-col">
+
+        <!-- METRICS -->
+        <div class="card-bright" style="padding:20px 22px;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div class="section-icon" style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.18)">
+              <svg width="15" height="15" fill="none" stroke="#3b82f6" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 style="font-size:14px;font-weight:700;color:#f1f5f9">Sistem Metrikleri</h2>
+              <p style="font-size:11px;color:#475569;margin-top:1px">Anlık performans</p>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <!-- Total clicks -->
+            <div class="metric-box">
+              <div style="font-size:11px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Toplam Tıklanma</div>
+              <div style="font-size:30px;font-weight:800;line-height:1;background:linear-gradient(135deg,#3b82f6,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ metrics.totalClicks.toLocaleString('tr-TR') }}</div>
+            </div>
+            <!-- Active links -->
+            <div class="metric-box">
+              <div style="font-size:11px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Aktif Link</div>
+              <div style="font-size:30px;font-weight:800;line-height:1;background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ metrics.activeLinksCount }}</div>
+            </div>
+            <!-- Redis - full width -->
+            <div class="metric-box" style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div>
+                <div style="font-size:11px;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Redis Cache Hit Rate</div>
+                <div style="font-size:28px;font-weight:800;line-height:1;background:linear-gradient(135deg,#a855f7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{{ metrics.redisHitRatePercent }}%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:7px;padding:7px 13px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.18);border-radius:10px;white-space:nowrap">
+                <span class="pulse-ring" style="width:7px;height:7px;background:#a855f7;border-radius:50%;display:block;flex-shrink:0"></span>
+                <span style="font-size:11px;color:#a855f7;font-weight:600">Canlı Cache</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHART -->
+        <div class="card" style="padding:20px 22px;flex:1;display:flex;flex-direction:column;min-height:220px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0">
+            <div class="section-icon" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.18)">
+              <svg width="15" height="15" fill="none" stroke="#6366f1" stroke-width="2" viewBox="0 0 24 24"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div>
+              <h2 style="font-size:14px;font-weight:700;color:#f1f5f9">Tıklanma Trendi</h2>
+              <p style="font-size:11px;color:#475569;margin-top:1px">Son 7 günlük veri</p>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <svg v-if="metrics.clicksTrend && metrics.clicksTrend.length > 0" width="100%" height="100%" viewBox="0 0 500 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="cg2" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#6366f1" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <line x1="0" x2="500" y1="160" y2="160" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+              <line x1="0" x2="500" y1="120" y2="120" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+              <line x1="0" x2="500" y1="80"  y2="80"  stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+              <line x1="0" x2="500" y1="40"  y2="40"  stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+              <path :d="chartFillPath" fill="url(#cg2)"/>
+              <path :d="chartLinePath" fill="none" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+              <g v-for="(pt, i) in chartPoints" :key="i">
+                <circle :cx="pt.x" :cy="pt.y" r="5" fill="#0b0f1a" stroke="#6366f1" stroke-width="3"
+                  @mouseover="hoveredPoint = { ...pt, label: metrics.clicksTrend[i].dateLabel, count: metrics.clicksTrend[i].clickCount }"
+                  @mouseleave="hoveredPoint = null"
+                  style="cursor:pointer"/>
+              </g>
+            </svg>
+            <!-- Tooltip -->
+            <div v-if="hoveredPoint" class="chart-tip" :style="{ left: (hoveredPoint.x/5)+'%', top: (hoveredPoint.y-52)+'px' }">
+              <div style="color:#64748b;font-size:10px;margin-bottom:3px">{{ hoveredPoint.label }}</div>
+              <div style="font-weight:700">{{ hoveredPoint.count }} tıklanma</div>
+            </div>
+            <!-- Empty -->
+            <div v-if="!metrics.clicksTrend || metrics.clicksTrend.length === 0" style="height:100%;display:flex;align-items:center;justify-content:center;color:#334155;font-size:13px">
+              Veri bekleniyor...
+            </div>
+          </div>
+          <!-- X labels -->
+          <div v-if="metrics.clicksTrend && metrics.clicksTrend.length > 0" style="display:flex;justify-content:space-between;padding-top:10px;flex-shrink:0">
+            <span v-for="t in metrics.clicksTrend" :key="t.dateLabel" style="font-size:10px;color:#334155;font-weight:600">{{ t.dateLabel }}</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- ===== /RIGHT COLUMN ===== -->
+
+    </div>
+    <!-- /CONTENT GRID -->
+
+    <!-- FOOTER -->
+    <footer style="text-align:center;padding:10px 0;border-top:1px solid rgba(255,255,255,0.05);flex-shrink:0">
+      <p style="font-size:11px;color:#1e293b">GoBurhan © 2026 · .NET 8 API & Redis Cache</p>
+    </footer>
+
+  </div>
+  <!-- /MAIN APP -->
+
+  <!-- TOASTS -->
+  <div class="toast-list">
+    <transition-group name="toast">
+      <div v-for="t in toasts" :key="t.id" class="toast-item" :class="t.type === 'success' ? 'toast-success' : 'toast-error'">
+        <span style="font-size:15px;flex-shrink:0">{{ t.type === 'success' ? '✓' : '✗' }}</span>
+        <span>{{ t.message }}</span>
+      </div>
+    </transition-group>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+  const { createApp, ref, reactive, computed, onMounted } = Vue;
+
+  createApp({
+    setup() {
+      const registerOpen    = ref(false);
+      const authSubmitting  = ref(false);
+      const authForm        = reactive({ username:'', password:'', passwordConfirm:'' });
+      const showTokenModal  = ref(true);
+      const toasts          = ref([]);
+      const links           = ref([]);
+      const loadingLinks    = ref(false);
+      const submitting      = ref(false);
+      const hoveredPoint    = ref(null);
+      const linkForm        = reactive({ originalUrl:'', shortCode:'' });
+      const metrics         = reactive({ totalClicks:0, activeLinksCount:0, redisHitRatePercent:100, clicksTrend:[] });
+      const token           = ref(localStorage.getItem('goburhan_admin_token') || '');
+
+      const showToast = (msg, type='success') => {
+        const id = Date.now();
+        toasts.value.push({ id, message:msg, type });
+        setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+      };
+
+      const checkAuthStatus = async () => {
+        try { const r = await fetch('/api/auth/status'); const d = await r.json(); registerOpen.value = d.registerOpen; }
+        catch(e) { console.error(e); }
+      };
+
+      const handleAuth = async () => {
+        if (authSubmitting.value) return;
+        if (!authForm.username.trim() || !authForm.password) { showToast('Tüm alanları doldurun.','error'); return; }
+        if (registerOpen.value && authForm.password !== authForm.passwordConfirm) { showToast('Şifreler eşleşmiyor.','error'); return; }
+        authSubmitting.value = true;
+        try {
+          const url = registerOpen.value ? '/api/auth/register' : '/api/auth/login';
+          const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ username:authForm.username, password:authForm.password }) });
+          if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || `Hata (${res.status})`); }
+          const data = await res.json();
+          showToast(registerOpen.value ? 'Kayıt başarılı!' : 'Giriş başarılı!');
+          localStorage.setItem('goburhan_admin_token', data.token);
+          token.value = data.token; showTokenModal.value = false;
+          authForm.username=''; authForm.password=''; authForm.passwordConfirm='';
+          await fetchLinks(); await fetchMetrics();
+        } catch(err) { showToast(err.message,'error'); }
+        finally { authSubmitting.value = false; }
+      };
+
+      const logout = async () => {
+        localStorage.removeItem('goburhan_admin_token');
+        token.value=''; links.value=[]; metrics.totalClicks=0; metrics.activeLinksCount=0; metrics.clicksTrend=[];
+        await checkAuthStatus(); showTokenModal.value=true;
+      };
+
+      const apiRequest = async (url, opts={}) => {
+        opts.headers = { ...opts.headers, 'X-Admin-Token': token.value };
+        const res = await fetch(url, opts);
+        if (res.status===401) { showToast('Oturum süresi doldu.','error'); logout(); throw new Error('Unauthorized'); }
+        if (!res.ok) { const e = await res.json().catch(()=>({})); const m=e.error||`Hata (${res.status})`; showToast(m,'error'); throw new Error(m); }
+        return res.json();
+      };
+
+      const fetchLinks = async () => {
+        if (!token.value) return; loadingLinks.value=true;
+        try { links.value = await apiRequest('/api/admin/links'); } catch(e){} finally { loadingLinks.value=false; }
+      };
+
+      const fetchMetrics = async () => {
+        if (!token.value) return;
+        try { const d=await apiRequest('/api/admin/metrics'); metrics.totalClicks=d.totalClicks; metrics.activeLinksCount=d.activeLinksCount; metrics.redisHitRatePercent=d.redisHitRatePercent; metrics.clicksTrend=d.clicksTrend; }
+        catch(e){}
+      };
+
+      const createLink = async () => {
+        if (submitting.value) return; submitting.value=true;
+        try {
+          await apiRequest('/api/admin/links', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(linkForm) });
+          showToast('Link başarıyla kısaltıldı! 🎉'); linkForm.originalUrl=''; linkForm.shortCode='';
+          await fetchLinks(); await fetchMetrics();
+        } catch(e){} finally { submitting.value=false; }
+      };
+
+      const deleteLink = async (id) => {
+        if (!confirm('Bu linki silmek istediğinize emin misiniz?')) return;
+        try { await apiRequest(`/api/admin/links/${id}`,{method:'DELETE'}); showToast('Link silindi.'); await fetchLinks(); await fetchMetrics(); }
+        catch(e){}
+      };
+
+      const getShortUrl = (code) => `${window.location.origin}/${code}`;
+      const getShortUrlDisplay = (code) => {
+        const d = (window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1') ? 'go.burhansahin.com.tr' : window.location.hostname;
+        return `${d}/${code}`;
+      };
+      const formatDate = (s) => s ? new Date(s).toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      const copyText = (t) => navigator.clipboard.writeText(t).then(()=>showToast('Kopyalandı!')).catch(()=>showToast('Kopyalama başarısız.','error'));
+
+      const chartPoints = computed(() => {
+        if (!metrics.clicksTrend||!metrics.clicksTrend.length) return [];
+        const max = Math.max(...metrics.clicksTrend.map(t=>t.clickCount), 10);
+        const step = 500/(metrics.clicksTrend.length-1);
+        return metrics.clicksTrend.map((item,i)=>({ x:i*step, y:160-((item.clickCount/max)*130) }));
+      });
+
+      const chartLinePath = computed(() => {
+        const pts = chartPoints.value; if(!pts.length) return '';
+        let d = `M ${pts[0].x} ${pts[0].y}`;
+        for(let i=0;i<pts.length-1;i++){
+          const c1x=pts[i].x+(pts[i+1].x-pts[i].x)/3, c2x=pts[i].x+2*(pts[i+1].x-pts[i].x)/3;
+          d+=` C ${c1x} ${pts[i].y}, ${c2x} ${pts[i+1].y}, ${pts[i+1].x} ${pts[i+1].y}`;
+        }
+        return d;
+      });
+
+      const chartFillPath = computed(() => {
+        const pts=chartPoints.value; if(!pts.length) return '';
+        return `${chartLinePath.value} L ${pts[pts.length-1].x} 200 L ${pts[0].x} 200 Z`;
+      });
+
+      onMounted(async () => {
+        if (token.value) { showTokenModal.value=false; await fetchLinks(); await fetchMetrics(); }
+        else { await checkAuthStatus(); showTokenModal.value=true; }
+      });
+
+      return { registerOpen,authSubmitting,authForm,showTokenModal,toasts,links,loadingLinks,submitting,linkForm,metrics,
+               handleAuth,logout,createLink,deleteLink,getShortUrl,getShortUrlDisplay,formatDate,copyText,
+               chartPoints,chartLinePath,chartFillPath,hoveredPoint,fetchLinks };
+    }
+  }).mount('#app');
+</script>
+</body>
+</html>

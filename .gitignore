@@ -1,0 +1,17 @@
+# Build results
+bin/
+obj/
+[Bb]in/
+[Ob]j/
+
+# User-specific files
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Secrets and local configurations
+appsettings.Development.json
+appsettings.Local.json
+*.bak
